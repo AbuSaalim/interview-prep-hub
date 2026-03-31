@@ -1,60 +1,221 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, Plus, List } from "lucide-react";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
-  const [formData, setFormData] = useState({
-    title: "", category: "React Hooks", definition: "", whyWeUse: "", codeExample: ""
-  });
+  
+  // States
+  const [activeTab, setActiveTab] = useState("manage"); 
+  const [topics, setTopics] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editId, setEditId] = useState(null); 
+  const [existingFolders, setExistingFolders] = useState([]); // Folders ki list ke liye naya state
 
+  // Category ko khali rakha hai initial state me
+  const initialForm = { title: "", category: "", definition: "", whyWeUse: "", codeExample: "" };
+  const [formData, setFormData] = useState(initialForm);
+
+  // Saare topics database se fetch karna
+  const fetchTopics = async () => {
+    const res = await fetch("/api/topics");
+    const json = await res.json();
+    if (json.success) {
+      setTopics(json.data);
+      // Unique categories nikal rahe hain datalist ke liye
+      const uniqueFolders = [...new Set(json.data.map(t => t.category).filter(c => c && c.trim() !== ""))];
+      setExistingFolders(uniqueFolders);
+    }
+  };
+
+  useEffect(() => {
+    fetchTopics();
+  }, []);
+
+  // Security Check
   if (loading) return <div className="p-10 text-white">Loading Auth...</div>;
-  if (!user?.isAdmin) return <div className="p-10 text-red-500">Bhai tu Admin nahi hai! Nikal yaha se.</div>;
+  if (!user?.isAdmin) return <div className="p-10 text-red-500 font-bold text-xl">Bhai tu Admin nahi hai! Nikal yaha se.</div>;
 
+  // Form Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Saving to MongoDB...", formData);
-    // Yaha hum api call karenge
+    setIsSubmitting(true);
+    
+    try {
+      const url = editId ? `/api/topics/${editId}` : "/api/topics";
+      const method = editId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const response = await res.json();
+
+      if (response.success) {
+        alert(editId ? "Topic mast Update ho gaya! 🔥" : "Naya Topic Save ho gaya! 🚀");
+        setFormData(initialForm);
+        setEditId(null);
+        setActiveTab("manage");
+        fetchTopics(); 
+      } else {
+        alert(response.message);
+      }
+    } catch (error) {
+      alert("API call fail ho gayi bhai!");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Delete Handler
+  const handleDelete = async (id) => {
+    if (!confirm("Bhai sach me delete karna hai? Ye wapas nahi aayega!")) return;
+    
+    await fetch(`/api/topics/${id}`, { method: "DELETE" });
+    fetchTopics(); 
+  };
+
+  // Edit Button Click Handler
+  const handleEditClick = (topic) => {
+    setFormData(topic);
+    setEditId(topic._id);
+    setActiveTab("form");
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto p-6 text-white">
-      <h1 className="text-3xl font-bold mb-8 text-blue-400">Admin Panel: Add New Hook</h1>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto p-6 text-white">
       
-      <form onSubmit={handleSubmit} className="space-y-6 bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl">
-        <div className="grid grid-cols-2 gap-4">
-          <input 
-            type="text" placeholder="Title (e.g. useState)" 
-            className="bg-black border border-white/10 p-3 rounded-xl outline-none focus:border-blue-500"
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
-          />
-          <select 
-            className="bg-black border border-white/10 p-3 rounded-xl outline-none"
-            onChange={(e) => setFormData({...formData, category: e.target.value})}
+      {/* Top Header & Tabs */}
+      <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
+          Admin Dashboard
+        </h1>
+        <div className="flex gap-2 bg-[#111] p-1 rounded-xl border border-white/10">
+          <button 
+            onClick={() => { setActiveTab("manage"); setEditId(null); setFormData(initialForm); }} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "manage" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}
           >
-            <option>React Hooks</option>
-            <option>Core Concepts</option>
-            <option>Advanced</option>
-          </select>
+            <List size={16} /> Manage Topics
+          </button>
+          <button 
+            onClick={() => { setActiveTab("form"); setEditId(null); setFormData(initialForm); }} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "form" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}
+          >
+            <Plus size={16} /> Add New
+          </button>
         </div>
-        
-        <textarea 
-          placeholder="Definition" 
-          className="w-full bg-black border border-white/10 p-3 rounded-xl h-32 outline-none focus:border-blue-500"
-          onChange={(e) => setFormData({...formData, definition: e.target.value})}
-        ></textarea>
+      </div>
 
-        <textarea 
-          placeholder="Code Example" 
-          className="w-full bg-black border border-white/10 p-3 rounded-xl h-48 font-mono outline-none focus:border-blue-500"
-          onChange={(e) => setFormData({...formData, codeExample: e.target.value})}
-        ></textarea>
+      {/* ================= MANAGE TOPICS (TABLE) ================= */}
+      {activeTab === "manage" && (
+        <div className="bg-[#111] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-white/5 border-b border-white/10 text-gray-400 text-sm uppercase tracking-wider">
+                <th className="p-4">Title</th>
+                <th className="p-4">Category (Folder)</th>
+                <th className="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topics.length === 0 ? (
+                <tr><td colSpan="3" className="p-6 text-center text-gray-500">Koi topic nahi mila. Naya add kar bhai!</td></tr>
+              ) : (
+                topics.map((topic) => (
+                  <tr key={topic._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <td className="p-4 font-bold text-blue-400">{topic.title}</td>
+                    <td className="p-4">
+                      {/* Agar direct file hai toh 'Root File' dikhayega, nahi toh folder name */}
+                      {topic.category ? (
+                        <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-xs border border-purple-500/30">
+                          {topic.category}
+                        </span>
+                      ) : (
+                        <span className="bg-gray-500/20 text-gray-400 px-3 py-1 rounded-full text-xs border border-gray-500/30">
+                          📄 Direct File
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 flex justify-end gap-3">
+                      <button onClick={() => handleEditClick(topic)} className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all">
+                        <Pencil size={18} />
+                      </button>
+                      <button onClick={() => handleDelete(topic._id)} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all">
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        <button className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20">
-          Save to MongoDB 🚀
-        </button>
-      </form>
+      {/* ================= ADD / EDIT FORM ================= */}
+      {activeTab === "form" && (
+        <form onSubmit={handleSubmit} className="space-y-6 bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl">
+          <h2 className="text-xl font-bold mb-4 text-gray-300">
+            {editId ? "✏️ Edit Topic" : "✨ Create New Topic"}
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Topic Title</label>
+              <input 
+                type="text" required placeholder="e.g., useState" 
+                className="w-full bg-black border border-white/10 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-white"
+                value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              {/* SMART INPUT / DATALIST FOR CATEGORY */}
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Folder / Category</label>
+              <input 
+                type="text" 
+                placeholder="Folder name (Khali chhod de for direct file)" 
+                list="folder-suggestions"
+                className="w-full bg-black border border-white/10 p-3 rounded-xl outline-none focus:border-purple-500 transition-colors text-white"
+                value={formData.category} 
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+              />
+              <datalist id="folder-suggestions">
+                {existingFolders.map((folder, idx) => (
+                  <option key={idx} value={folder} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Definition</label>
+            <textarea 
+              required placeholder="Ye concept kya hai?" 
+              className="w-full bg-black border border-white/10 p-3 rounded-xl h-24 outline-none focus:border-blue-500 text-white"
+              value={formData.definition} onChange={(e) => setFormData({...formData, definition: e.target.value})}
+            ></textarea>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Live Code Example</label>
+            <textarea 
+              placeholder="Paste your React code here..." 
+              className="w-full bg-black border border-white/10 p-3 rounded-xl h-48 font-mono text-sm outline-none focus:border-purple-500 text-emerald-400"
+              value={formData.codeExample} onChange={(e) => setFormData({...formData, codeExample: e.target.value})}
+            ></textarea>
+          </div>
+
+          <button disabled={isSubmitting} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 py-4 rounded-xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50">
+            {isSubmitting ? "Processing..." : (editId ? "Update Topic 💾" : "Save to Database 🚀")}
+          </button>
+        </form>
+      )}
+
     </motion.div>
   );
 }

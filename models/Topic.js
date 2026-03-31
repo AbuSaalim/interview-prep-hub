@@ -2,12 +2,13 @@ import mongoose from "mongoose";
 
 const TopicSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  slug: { type: String, required: true, unique: true }, // use-state, use-effect
-  category: { type: String, required: true }, // React Hooks, Core Concepts
+  slug: { type: String, required: true, unique: true }, 
+  // Niche wali line change ki hai: Ab category required nahi hai
+  category: { type: String, default: "" }, 
   breadcrumb: String,
   definition: String,
   whyWeUse: String,
-  keyPoints: [String], // Checkbox points ka array
+  keyPoints: [String],
   codeExample: String,
 }, { timestamps: true });
 

@@ -16,7 +16,11 @@ export default function LiveEditor({ code }) {
           showLineNumbers: true,
           showInlineErrors: true, // Agar tu code me galti karega toh wahi red line dikhayega
           wrapContent: true,
-          editorHeight: 450, // Editor ki height
+          editorHeight: 700, // Editor ki height
+          
+          // 👇 BAS YE DO LINES ADD KI HAIN CONSOLE KE LIYE 👇
+          showConsole: true,         // Console panel ko default open rakhega
+          showConsoleButton: true,   // Niche ek button dega jisse user console hide/show kar sake
         }}
       />
     </div>

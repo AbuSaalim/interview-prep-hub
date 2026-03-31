@@ -9,9 +9,9 @@ export default function AdminSidebar({ isOpen, setIsOpen }) {
 
   const adminLinks = [
     { name: "Dashboard", href: "/admin", icon: <LayoutDashboard size={18} /> },
-    { name: "Add New Topic", href: "/admin/add", icon: <PlusCircle size={18} /> },
-    { name: "Manage Topics", href: "/admin/manage", icon: <Database size={18} /> },
-    { name: "Settings", href: "/admin/settings", icon: <Settings size={18} /> },
+    // { name: "Add New Topic", href: "/admin/add", icon: <PlusCircle size={18} /> },
+    // { name: "Manage Topics", href: "/admin/manage", icon: <Database size={18} /> },
+    // { name: "Settings", href: "/admin/settings", icon: <Settings size={18} /> },
   ];
 
   return (
