@@ -36,15 +36,29 @@ export default async function TopicPage({ params }) {
       
       {/* Info Cards Grid (Side-by-side on desktop) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        {/* Definition Card */}
-        <div className="bg-[#0f1117] p-8 rounded-2xl shadow-xl border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-purple-500/10"></div>
-          <h3 className="text-xl font-bold text-gray-100 mb-4 flex items-center gap-3">
-            <span className="text-purple-400 bg-purple-500/10 p-2 rounded-xl">⚡</span> Definition
-          </h3>
-          <p className="text-gray-400 leading-relaxed text-[16px]">{dbData.definition}</p>
-        </div>
-
+       
+    {/* Definition Card */}
+<div className="bg-[#0f1117] p-8 rounded-2xl shadow-xl border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all duration-300 md:col-span-2">
+  <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-purple-500/10"></div>
+  
+  <h3 className="text-xl font-bold text-gray-100 mb-4 flex items-center gap-3">
+    <span className="text-purple-400 bg-purple-500/10 p-2 rounded-xl">⚡</span> Definition
+  </h3>
+  
+{/* 👇 BRAHMASTRA: dangerouslySetInnerHTML 👇 */}
+  <div 
+    className="text-gray-300 leading-[1.8] text-[16px]" 
+    dangerouslySetInnerHTML={{ 
+      __html: dbData.definition
+        ? dbData.definition
+            /* Yahan 2 <br/> ki jagah sirf 1 <br/> kar diya, spacing ekdum perfect aayegi */
+            .replace(/(\d+\.)/g, '<br/><span class="text-purple-400 font-bold text-[18px]">$1</span>') 
+            /* Start me agar extra gap aa jaye toh usko hata degi */
+            .replace(/^(<br\/>)+/, '') 
+        : "Definition not available."
+    }} 
+  />
+</div>
         {/* Why We Use Card */}
         {dbData.whyWeUse && (
           <div className="bg-gradient-to-br from-blue-900/10 to-[#0f1117] p-8 rounded-2xl shadow-xl border border-blue-500/20 relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
