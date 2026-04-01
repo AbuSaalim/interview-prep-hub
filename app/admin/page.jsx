@@ -1,30 +1,28 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "@/app/context/AuthContext"; // Path check kar lena
 import { motion } from "framer-motion";
 import { Pencil, Trash2, Plus, List } from "lucide-react";
+// 1. TOAST IMPORT KIYA
+import toast from "react-hot-toast";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
   
-  // States
   const [activeTab, setActiveTab] = useState("manage"); 
   const [topics, setTopics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editId, setEditId] = useState(null); 
-  const [existingFolders, setExistingFolders] = useState([]); // Folders ki list ke liye naya state
+  const [existingFolders, setExistingFolders] = useState([]); 
 
-  // Category ko khali rakha hai initial state me
   const initialForm = { title: "", category: "", definition: "", whyWeUse: "", codeExample: "" };
   const [formData, setFormData] = useState(initialForm);
 
-  // Saare topics database se fetch karna
   const fetchTopics = async () => {
     const res = await fetch("/api/topics");
     const json = await res.json();
     if (json.success) {
       setTopics(json.data);
-      // Unique categories nikal rahe hain datalist ke liye
       const uniqueFolders = [...new Set(json.data.map(t => t.category).filter(c => c && c.trim() !== ""))];
       setExistingFolders(uniqueFolders);
     }
@@ -34,14 +32,15 @@ export default function AdminPage() {
     fetchTopics();
   }, []);
 
-  // Security Check
   if (loading) return <div className="p-10 text-white">Loading Auth...</div>;
   if (!user?.isAdmin) return <div className="p-10 text-red-500 font-bold text-xl">Bhai tu Admin nahi hai! Nikal yaha se.</div>;
 
-  // Form Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    // Naya toast loading state ke liye
+    const toastId = toast.loading("Processing...");
     
     try {
       const url = editId ? `/api/topics/${editId}` : "/api/topics";
@@ -56,30 +55,71 @@ export default function AdminPage() {
       const response = await res.json();
 
       if (response.success) {
-        alert(editId ? "Topic mast Update ho gaya! 🔥" : "Naya Topic Save ho gaya! 🚀");
+        // ALERT KI JAGAH TOAST SUCCESS
+        toast.success(editId ? "Topic mast Update ho gaya! 🔥" : "Naya Topic Save ho gaya! 🚀", { id: toastId });
         setFormData(initialForm);
         setEditId(null);
         setActiveTab("manage");
         fetchTopics(); 
       } else {
-        alert(response.message);
+        // ALERT KI JAGAH TOAST ERROR
+        toast.error(response.message, { id: toastId });
       }
     } catch (error) {
-      alert("API call fail ho gayi bhai!");
+      toast.error("API call fail ho gayi bhai!", { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Delete Handler
-  const handleDelete = async (id) => {
-    if (!confirm("Bhai sach me delete karna hai? Ye wapas nahi aayega!")) return;
-    
-    await fetch(`/api/topics/${id}`, { method: "DELETE" });
-    fetchTopics(); 
+  // Delete Handler with Custom Toast
+  const handleDelete = (id) => {
+    // Custom Toast jisme UI (JSX) pass kar rahe hain
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <span className="text-sm font-semibold text-gray-200">
+            ⚠️ Bhai sach me delete karna hai? Ye wapas nahi aayega!
+          </span>
+          <div className="flex justify-end gap-2 mt-2">
+            {/* Cancel Button */}
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-bold transition-all"
+            >
+              Cancel
+            </button>
+            {/* Confirm Delete Button */}
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id); // Pehle is warning wale toast ko band karo
+                const loadingToast = toast.loading("Deleting..."); // Loading state dikhao
+                
+                try {
+                  await fetch(`/api/topics/${id}`, { method: "DELETE" });
+                  fetchTopics(); // Table refresh karo
+                  toast.success("Topic khatam! 🗑️", { id: loadingToast });
+                } catch (error) {
+                  toast.error("Delete fail ho gaya bhai!", { id: loadingToast });
+                }
+              }}
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-all shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+            >
+              Haan, Utha Le!
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity, // Jab tak user click na kare, warning band nahi hogi
+        position: "top-center", // Upar center me mast dikhega
+        style: {
+          background: '#1e2330',
+          border: '1px solid rgba(239, 68, 68, 0.3)', // Reddish border for warning
+        }
+      }
+    );
   };
-
-  // Edit Button Click Handler
   const handleEditClick = (topic) => {
     setFormData(topic);
     setEditId(topic._id);
@@ -129,7 +169,6 @@ export default function AdminPage() {
                   <tr key={topic._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <td className="p-4 font-bold text-blue-400">{topic.title}</td>
                     <td className="p-4">
-                      {/* Agar direct file hai toh 'Root File' dikhayega, nahi toh folder name */}
                       {topic.category ? (
                         <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-xs border border-purple-500/30">
                           {topic.category}
@@ -174,7 +213,6 @@ export default function AdminPage() {
             </div>
             
             <div>
-              {/* SMART INPUT / DATALIST FOR CATEGORY */}
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Folder / Category</label>
               <input 
                 type="text" 
